@@ -202,23 +202,18 @@ class ArchiveReaderClient:
         """
         Logs a user in to their archive.org account.
         """
-        # get cookies
-        self.session.get(self.URL_FORMAT % 'account/login')
-
-        res = self.session.post(self.URL_FORMAT % 'account/login', {
-            'username': email,
-            'password': password,
-            'remember': True,
-            'referer': self.URL_FORMAT % '',
-            'login': True,
-            'submit_by_js': True
-        }, headers={
-            'referer': self.URL_FORMAT % 'account/login'
-        })
+        res = self.session.post(
+            self.URL_FORMAT % 'services/xauthn/',
+            params={'op': 'login'},
+            data={'email': email, 'password': password}
+        )
         js = res.json()
-        if js['status'] != 'ok':
-            logging.error('login responded with status %s, message %s' % \
-                (js['status'], js['message']))
+        if not js.get('success'):
+            reason = js.get('values', {}).get('reason', 'unknown error')
+            logging.error('login failed: %s' % reason)
             raise AssertionError
-        else:
-            logging.debug('user has logged in successfully')
+        # apply the logged-in cookies to the session
+        cookies = js['values']['cookies']
+        for name, value in cookies.items():
+            self.session.cookies.set(name, value, domain='.archive.org')
+        logging.debug('user has logged in successfully')
