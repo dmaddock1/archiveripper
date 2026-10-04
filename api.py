@@ -154,10 +154,18 @@ class ArchiveReaderClient:
             logging.error('page index out of range')
             raise IndexError
 
+        # run any renewals that have come due, so the loan doesn't expire
+        # partway through a long download
+        self.timer.run(blocking=False)
+
         img_url = self.book_page_urls[i] + "&scale=%d&rotate=0" % scale
         res = self.session.get(img_url, headers={
             'referer': self.URL_FORMAT % ('details/' + self.book_id)
         })
+        if not res.ok or res.headers.get('content-type', '').startswith('text/html'):
+            logging.error('page %d: expected an image but got HTTP %d (%s)' % (
+                i + 1, res.status_code, res.headers.get('content-type')))
+            raise AssertionError
 
         image_data = res.content
         obfuscation_key = res.headers.get('x-obfuscate')
