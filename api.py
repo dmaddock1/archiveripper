@@ -53,8 +53,10 @@ class ArchiveReaderClient:
             logging.error('error with action grant_access: %s' % err)
             raise AssertionError
         else:
-            logging.debug('received book token: %s' % js['value'])
-            self.token = js['value']
+            # the token key has changed over time; it gets replaced by
+            # renew_book() anyway, so don't fail if it's missing
+            self.token = js.get('value') or js.get('token')
+            logging.debug('grant_access response: %s' % js)
 
 
     def renew_book(self):
@@ -78,8 +80,8 @@ class ArchiveReaderClient:
             logging.error('error renewing book: %s' % err)
             raise AssertionError
         else:
-            logging.debug('renewed book token: %s' % js['token'])
-            self.token = js['token']
+            self.token = js.get('token') or js.get('value')
+            logging.debug('renewed book token: %s' % self.token)
 
 
     def schedule_renew_book(self):
